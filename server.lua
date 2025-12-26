@@ -5,6 +5,11 @@ local VALID_EXTENSIONS = {
     ['.ydr']  = true,
     ['.ybn']  = true,
     ['.ytd']  = true,
+    ['.ymt']  = true,
+    ['.ydd']  = true,
+    ['.ycd']  = true,
+    ['.ynv']  = true,
+    ['.ypt']  = true,
     ['.ytyp'] = true
 }
 
@@ -103,3 +108,4 @@ CreateThread(function()
     end
 
 end)
+
