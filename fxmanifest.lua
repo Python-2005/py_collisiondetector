@@ -5,7 +5,7 @@ lua54 "yes"
 
 name "py_collisiondetector"
 author "Python"
-version "1.0.0"
+version "1.0.1"
 
 shared_scripts {
     "config.lua"
