@@ -4,6 +4,7 @@ local VALID_EXTENSIONS = {
     ['.ymap'] = true,
     ['.ydr']  = true,
     ['.ybn']  = true,
+    ['.ytd']  = true,
     ['.ytyp'] = true
 }
 
@@ -100,4 +101,5 @@ CreateThread(function()
     else
         print('^1[CollisionChecker]^7 Duplicates detected — these may cause collision or MLO issues.')
     end
+
 end)
