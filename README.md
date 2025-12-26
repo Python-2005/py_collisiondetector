@@ -2,7 +2,7 @@
 
 ## Overview
 
-py_collisiondetector is a lightweight, server-side FiveM resource that scans all loaded resources for duplicated GTA asset filenames that can cause MLO, collision, and map loading issues.
+py_collisiondetector is a lightweight, standalone, server-side FiveM resource that scans all loaded resources for duplicated GTA asset filenames that can cause MLO, collision, and map loading issues.
 
 The script recursively scans resource directories and reports filename collisions across resources directly in the server console.
 
