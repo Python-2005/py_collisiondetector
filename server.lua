@@ -1,3 +1,5 @@
+if not Config.Enabled then return end
+
 local VALID_EXTENSIONS = {
     ['.ymap'] = true,
     ['.ydr']  = true,

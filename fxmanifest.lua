@@ -7,6 +7,10 @@ name "py_collisiondetector"
 author "Python"
 version "1.0.0"
 
+shared_scripts {
+    "config.lua"
+}
+
 server_scripts {
     "server.lua"
 }
