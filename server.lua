@@ -1,18 +1,10 @@
 if not Config.Enabled then return end
 
--- List of valid file extensions to check for collisions
-local VALID_EXTENSIONS = {
-    ['.ymap'] = true,
-    ['.ydr']  = true,
-    ['.ybn']  = true,
-    ['.ytd']  = true,
-    ['.ymt']  = true,
-    ['.ydd']  = true,
-    ['.ycd']  = true,
-    ['.ynv']  = true,
-    ['.ypt']  = true,
-    ['.ytyp'] = true
-}
+-- Use Config.Extensions for valid file types
+local VALID_EXTENSIONS = {}
+for i = 1, #Config.Extensions do
+    VALID_EXTENSIONS[Config.Extensions[i]:lower()] = true
+end
 
 local foundFiles = {} -- Store found files by name
 local dirCache = {}   -- Cache directory listings to avoid repeated IO
@@ -26,16 +18,18 @@ end
 local function listDir(path)
     if dirCache[path] then return dirCache[path] end
 
-    local handle = io.popen('dir "' .. path .. '" /b /a')
+    local handle = io.popen('dir "' .. path .. '" /b /a 2>nul')
     if not handle then
-        handle = io.popen('ls -a "' .. path .. '"')
+        handle = io.popen('ls -a "' .. path .. '" 2>/dev/null')
     end
     if not handle then return {} end
 
     local items = {}
+    local idx = 0
     for item in handle:lines() do
-        if item ~= '.' and item ~= '..' then
-            table.insert(items, item)
+        if item ~= '.' and item ~= '..' and item ~= '' then
+            idx = idx + 1
+            items[idx] = item
         end
     end
 
@@ -49,7 +43,6 @@ local function scanResource(resourceName)
     local basePath = GetResourcePath(resourceName)
     if not basePath then return end
 
-    -- Start scanning the 'stream' and 'maps' folders
     local queue = {
         {path = 'stream', base = basePath},
         {path = 'maps', base = basePath}
@@ -57,7 +50,7 @@ local function scanResource(resourceName)
 
     local co = coroutine.create(function()
         while #queue > 0 do
-            local batchSize = 3 -- Process up to 3 items per tick
+            local batchSize = 3
             local nextQueue = {}
 
             for i = 1, math.min(batchSize, #queue) do
@@ -65,7 +58,8 @@ local function scanResource(resourceName)
                 local fullPath = current.base .. '/' .. current.path
                 local items = listDir(fullPath)
                 if items then
-                    for _, item in ipairs(items) do
+                    for j = 1, #items do
+                        local item = items[j]
                         local itemPath = fullPath .. '/' .. item
                         local relPath = current.path .. '/' .. item
 
@@ -75,40 +69,53 @@ local function scanResource(resourceName)
                             if not foundFiles[key] then
                                 foundFiles[key] = {}
                             end
-                            table.insert(foundFiles[key], {
+                            local fLen = #foundFiles[key]
+                            foundFiles[key][fLen + 1] = {
                                 resource = resourceName,
                                 path = relPath
-                            })
+                            }
                         else
                             -- If the item is a directory, add it to the next queue
-                            table.insert(nextQueue, {path = relPath, base = current.base})
+                            local nLen = #nextQueue
+                            nextQueue[nLen + 1] = {path = relPath, base = current.base}
                         end
                     end
                 end
             end
 
-            -- Add remaining items to the next queue
-            for _, item in ipairs(queue) do
-                table.insert(nextQueue, item)
+            for k = 1, #queue do
+                local nLen = #nextQueue
+                nextQueue[nLen + 1] = queue[k]
             end
             queue = nextQueue
-            coroutine.yield() -- Yield to avoid blocking the server
+            coroutine.yield()
         end
     end)
 
-    -- Run the coroutine until finished
     while coroutine.status(co) ~= 'dead' do
         coroutine.resume(co)
         Wait(0)
     end
 end
 
+-- Collect keys numerically
+local function getAllKeys(tbl)
+    local keys = {}
+    local idx = 0
+    for k, _ in next, tbl do
+        idx = idx + 1
+        keys[idx] = k
+    end
+    return keys
+end
+
 -- Main thread to scan all resources
 CreateThread(function()
     Wait(5000)
-    print('^3[CollisionChecker]^7 Starting resource scan, please be patient this can take a couple of minutes...')
+    print('^3[CollisionChecker]^7 Starting resource scan, please be patient...')
 
-    for i = 0, GetNumResources() - 1 do
+    local totalResources = GetNumResources()
+    for i = 0, totalResources - 1 do
         local resourceName = GetResourceByFindIndex(i)
         if resourceName then
             scanResource(resourceName)
@@ -117,14 +124,19 @@ CreateThread(function()
 
     print('^3[CollisionChecker]^7 Scan completed. Results:')
 
+    local keys = getAllKeys(foundFiles)
     local foundAny = false
-    for fileName, entries in pairs(foundFiles) do
+    for i = 1, #keys do
+        local fileName = keys[i]
+        local entries = foundFiles[fileName]
         if #entries > 1 then
             foundAny = true
-            print('^1[COLLISION DETECTED]^7 File: ^3' .. fileName .. '^7')
-            for _, info in ipairs(entries) do
-                print('  → ^5' .. info.resource .. '^7 | ^2' .. info.path .. '^7')
+            print('^1[COLLISION]^7 File: ^3' .. fileName .. '^7 (' .. #entries .. ' copies)')
+            for j = 1, #entries do
+                local info = entries[j]
+                print('  [^5' .. j .. '^7] ' .. info.resource .. ' → ^2' .. info.path .. '^7')
             end
+            print('')
         end
     end
 
@@ -133,4 +145,6 @@ CreateThread(function()
     else
         print('^1[CollisionChecker]^7 Duplicates detected — these may cause collision or MLO issues.')
     end
+
+    print('^3[CollisionChecker]^7 Total files scanned: ' .. #keys)
 end)
